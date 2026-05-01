@@ -403,11 +403,13 @@ function ClashArena() {
         </nav>
 
         <div className="header-right">
-          <div className={`status-pill ${socketConnected ? "pill-green" : "pill-red"}`}>
+          <div className={`status-pill ${mounted && socketConnected ? "pill-green" : "pill-red"}`}>
             <span className="pill-dot" />
-            {socketConnected ? "LIVE" : "OFFLINE"}
+            {mounted && socketConnected ? "LIVE" : "OFFLINE"}
           </div>
-          {isConnected ? (
+          {!mounted ? (
+            <button className="btn btn-primary" disabled>Connect Wallet</button>
+          ) : isConnected ? (
             <div className="wallet-chip">
               <div className="wallet-info">
                 <span className="wallet-addr">{shortWallet(address!)}</span>
@@ -424,7 +426,7 @@ function ClashArena() {
         </div>
       </header>
 
-      {!socketConnected && (
+      {mounted && !socketConnected && (
         <div className="server-banner">
           ⚠️ Server offline. Make sure your Railway backend is running.
         </div>
@@ -440,16 +442,16 @@ function ClashArena() {
             <div className="lobby-left">
               <h2 className="section-title">Choose Your Battle</h2>
 
-              {!isConnected && <div className="notice">Connect your wallet to enter the arena.</div>}
+              {mounted && !isConnected && <div className="notice">Connect your wallet to enter the arena.</div>}
 
-              {isConnected && myAgents.length === 0 && (
+              {mounted && isConnected && myAgents.length === 0 && (
                 <div className="notice notice-warn">
                   No agents yet. <button className="link-btn" onClick={() => setTab("my-agents")}>Create one →</button>
                 </div>
               )}
 
               {/* Agent selector */}
-              {isConnected && myAgents.length > 0 && (
+              {mounted && isConnected && myAgents.length > 0 && (
                 <div className="section-block">
                   <div className="block-label">Your agent</div>
                   <div className="agent-select-list">
@@ -467,7 +469,7 @@ function ClashArena() {
               )}
 
               {/* Game type */}
-              {isConnected && myAgents.length > 0 && (
+              {mounted && isConnected && myAgents.length > 0 && (
                 <div className="section-block">
                   <div className="block-label">Game type</div>
                   <div className="game-type-list">
@@ -506,7 +508,7 @@ function ClashArena() {
               )}
 
               {/* Enter arena button */}
-              {selectedGame && selectedSize && selectedAgentId && isConnected && (
+              {selectedGame && selectedSize && selectedAgentId && mounted && isConnected && (
                 <div className="section-block">
                   <div className="entry-box">
                     <div className="entry-info">
@@ -543,7 +545,7 @@ function ClashArena() {
                   <span className="feed-empty-icon">⚔️</span>
                   <p>Select a game and room size to enter the arena.</p>
                   <p className="hint-text">
-                    {socketConnected
+                    {mounted && socketConnected
                       ? "✅ Server live — multiplayer ready."
                       : "⚠️ Server offline — run node server.js locally or check Railway."}
                   </p>
@@ -552,7 +554,7 @@ function ClashArena() {
                 <div className="chat-panel" style={{height:"100%", minHeight:400}}>
                   <div className="chat-header-row">
                     <span className="chat-label">⚔️ Live Feed</span>
-                    <span className="chat-badge">{socketConnected ? "🟢 Live" : "🔴 Offline"}</span>
+                    <span className="chat-badge">{mounted && socketConnected ? "🟢 Live" : "🔴 Offline"}</span>
                   </div>
                   <div className="chat-log">
                     {chatLog.length === 0 && <div className="chat-empty">Messages appear here…</div>}
@@ -773,10 +775,10 @@ function ClashArena() {
           <div className="agents-page">
             <div className="page-header">
               <h2 className="section-title" style={{marginBottom:0}}>My Agents</h2>
-              {isConnected && <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>+ Create Agent</button>}
+              {mounted && isConnected && <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>+ Create Agent</button>}
             </div>
-            {!isConnected && <div className="notice">Connect your wallet to manage agents.</div>}
-            {isConnected && myAgents.length === 0 && (
+            {mounted && !isConnected && <div className="notice">Connect your wallet to manage agents.</div>}
+            {mounted && isConnected && myAgents.length === 0 && (
               <div className="empty-state">
                 <span style={{fontSize:48}}>🤖</span>
                 <p>No agents yet. Create your first one!</p>
@@ -811,7 +813,7 @@ function ClashArena() {
         {tab === "dashboard" && (
           <div className="dashboard-page">
             <h2 className="section-title">My Dashboard</h2>
-            {!isConnected ? <div className="notice">Connect your wallet to view your dashboard.</div> : (
+            {!mounted || !isConnected ? <div className="notice">Connect your wallet to view your dashboard.</div> : (
               <>
                 <div className="dash-cards">
                   <div className="dash-card">
