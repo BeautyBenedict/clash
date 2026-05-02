@@ -125,6 +125,8 @@ function ClashArena() {
 
   // Queue state
   const [queueStatus, setQueueStatus]       = useState<{ waiting: number; size: number; message: string } | null>(null);
+  // Live counts per room size: { 2: 1, 5: 0, 8: 3 }
+  const [queueCounts, setQueueCounts]       = useState<Record<number, number>>({ 2: 0, 5: 0, 8: 0 });
 
   // Room / battle state
   const [room, setRoom]                     = useState<Room | null>(null);
@@ -153,7 +155,15 @@ function ClashArena() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("connect",    () => setSocketConnected(true));
+    socket.on("connect", () => {
+      setSocketConnected(true);
+      // Request live counts for all room sizes
+      ROOM_SIZES.forEach(s => {
+        GAME_CONFIGS.forEach(g => {
+          socket.emit("get_queue_status", { gameType: g.id, size: s.size });
+        });
+      });
+    });
     socket.on("disconnect", () => setSocketConnected(false));
     if (socket.connected) setSocketConnected(true);
 
@@ -161,12 +171,17 @@ function ClashArena() {
     socket.on("queue_joined", (data: { waiting: number; size: number; message: string }) => {
       setQueueStatus(data);
       setAppPhase("queue");
+      setQueueCounts(prev => ({ ...prev, [data.size]: data.waiting }));
       addChat("🏟️ Arena", data.message, "system");
     });
 
     // Queue count updated (someone else joined/left)
     socket.on("queue_update", (data: { waiting: number; size: number; message?: string }) => {
-      setQueueStatus(prev => prev ? { ...prev, ...data } : data as typeof prev);
+      setQueueStatus(prev => prev ? { ...prev, ...data } : { waiting: data.waiting, size: data.size, message: data.message ?? '' });
+      // Update live counter for this room size
+      if (data.size) {
+        setQueueCounts(prev => ({ ...prev, [data.size]: data.waiting }));
+      }
       if (data.message) addChat("🏟️ Arena", data.message, "system");
     });
 
@@ -489,16 +504,21 @@ function ClashArena() {
                 </div>
               )}
 
-              {/* Room size */}
-              {selectedGame && (
+              {/* Room size — always visible */}
+              {mounted && isConnected && myAgents.length > 0 && (
                 <div className="section-block">
-                  <div className="block-label">Room size</div>
+                  <div className="block-label">Pick a room size</div>
                   <div className="size-list">
                     {ROOM_SIZES.map(s => (
                       <button key={s.size}
                         className={`size-btn ${selectedSize === s.size ? "size-active" : ""}`}
                         onClick={() => setSelectedSize(s.size)}>
-                        <span className="size-label">{s.label}</span>
+                        <div className="size-counter">
+                          <span className="size-current">{queueCounts[s.size] ?? 0}</span>
+                          <span className="size-slash">/</span>
+                          <span className="size-max">{s.size}</span>
+                        </div>
+                        <span className="size-label">{s.size === 2 ? "1v1" : s.size === 5 ? "5-way" : "8-way"}</span>
                         <span className="size-fee">{(s.size * 0.001).toFixed(3)} ETH pool</span>
                         <span className="size-desc">{s.desc}</span>
                       </button>
@@ -1002,7 +1022,11 @@ function ClashArena() {
         .size-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;min-width:130px;flex-shrink:0;scroll-snap-align:start;}
         .size-btn:hover{border-color:var(--border2);}
         .size-active{border-color:var(--accent);background:rgba(255,68,68,0.08);}
-        .size-label{font-family:var(--font-d);font-size:22px;letter-spacing:1px;color:var(--text);}
+        .size-counter{display:flex;align-items:baseline;gap:2px;margin-bottom:4px;}
+        .size-current{font-family:var(--font-d);font-size:28px;color:var(--accent2);line-height:1;}
+        .size-slash{font-family:var(--font-d);font-size:20px;color:var(--muted2);}
+        .size-max{font-family:var(--font-d);font-size:28px;color:var(--text);line-height:1;}
+        .size-label{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;color:var(--muted2);text-transform:uppercase;}
         .size-fee{font-family:var(--font-mono);font-size:10px;color:var(--accent2);}
         .size-desc{font-size:11px;color:var(--muted2);text-align:center;}
 
